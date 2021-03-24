@@ -1,29 +1,16 @@
-# code adapted from p04-models.py
-
-from os import strerror
-import numpy as np
-import math as math
+# Anna Spiro 
+# ML Course Project: COVID Search Data (NY Counties)
 import csv 
-from sklearn.feature_extraction import DictVectorizer
 from sklearn.model_selection import train_test_split
-from sklearn.base import ClassifierMixin
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import Perceptron, LogisticRegression
-from sklearn.neural_network import MLPClassifier
-
-# new helpers:
-from shared import dataset_local_path, bootstrap_accuracy, simple_boxplot, TODO
 
 # stdlib:
 from dataclasses import dataclass
-import json
-from typing import Dict, Any, List
+from typing import List
 
 # import google symptoms data 
+# data found here: https://pair-code.github.io/covid19_symptom_dataset/?country=US (chose to use NY county data)
 # code to read csv adapted from https://realpython.com/python-csv/
 
-# setup dataclass 
 @dataclass
 class SymptomsData:
     date: str
@@ -47,7 +34,7 @@ class SymptomsData:
 
 # first, get csv data into list of SymptomsData
 
-# keep relevant dates as a set so faster to search later 
+# keep relevant dates as a set so that it's faster to find relevant casese datapoints   
 relevant_dates = set() 
 
 # 2020 data 
@@ -56,7 +43,7 @@ last_year_datapoints: List[SymptomsData] = []
 with open("2020_NY_data.csv") as csv_file: 
     csv_reader = csv.DictReader(csv_file, delimiter=',')
 
-    # want to start on row 53 (before is combined VT data)
+    # want to start on row 53 (before is combined NY data)
     relevant_rows = [row for idx, row in enumerate(csv_reader) if idx in range(53,3277)]
 
     for row in relevant_rows: 
@@ -96,7 +83,7 @@ this_year_datapoints: List[SymptomsData] = []
 with open("2021_NY_data.csv") as csv_file: 
     csv_reader = csv.DictReader(csv_file, delimiter=',')
 
-    # want to start on row 53 (before is combined VT data)
+    # want to start on row 11 (before is combined NY data)
     relevant_rows = [row for idx, row in enumerate(csv_reader) if idx in range(11,631)]
 
     for row in relevant_rows: 
@@ -108,7 +95,7 @@ with open("2021_NY_data.csv") as csv_file:
 
         this_year_datapoints.append(SymptomsData(
         date = row["date"],
-        county = row["sub_region_2"].rsplit(' ',1)[0],
+        county = row["sub_region_2"].rsplit(' ',1)[0], # don't want "County"
         fever = float(row["symptom:Fever"]) ,
         chills = float(row["symptom:Chills"]),
         cough = float(row["symptom:Cough"]) ,
@@ -126,12 +113,11 @@ with open("2021_NY_data.csv") as csv_file:
         anosmia = float(row["symptom:Anosmia"]), 
         myalgia = float(row["symptom:Myalgia"])))
 
-
 total_sypmtoms_datapoints = last_year_datapoints + this_year_datapoints
+# note: len of this = 1024
 
 # add in new weekly COVID cases to datapoints 
 
-# setup dataclass 
 @dataclass
 class CasesData:
     date: str
@@ -139,10 +125,6 @@ class CasesData:
     cases: int 
 
 cases_datapoints: List[CasesData] = []
-
-# testing 
-new_york = 0
-num_rows = 0 
 
 with open("cases_data.csv") as csv_file: 
     csv_reader = csv.DictReader(csv_file, delimiter=',')
@@ -156,9 +138,10 @@ with open("cases_data.csv") as csv_file:
             next_days = 6 
             rows_ahead = 1 
 
+            # case data is given by day, we want weekly sum 
             while next_days != 0: 
                 next_row = list_reader[i + rows_ahead]
-                if next_row["county"] == row["county"]: # the same county -- so next day in the week 
+                if next_row["county"] == row["county"]: # the same county -- so this row is the next day in the week 
                     current_cases += int(next_row["cases"])
                     next_days -= 1
                 rows_ahead += 1 
@@ -169,58 +152,64 @@ with open("cases_data.csv") as csv_file:
                 cases = current_cases 
             ))
 
+# join symptoms and cases data 
 
-#print("num symptoms datapoints = " + str(len(total_sypmtoms_datapoints)))
-print("num cases  = " + str(len(cases_datapoints)))
-print(cases_datapoints[0])
+@dataclass
+class JoinedData:
+    date: str
+    county: str 
+    symptoms: List[float]
+    cases: int 
 
+joined_datapoints: List[JoinedData] = []
 
+for symptoms_datapoint in total_sypmtoms_datapoints: 
+    current_date = symptoms_datapoint.date
+    current_county = symptoms_datapoint.county
 
+    # list of symptoms data 
+    current_symptoms = [symptoms_datapoint.fever, symptoms_datapoint.chills, symptoms_datapoint.cough, symptoms_datapoint.shortness_of_breath, symptoms_datapoint.shallow_breathing, symptoms_datapoint.fatigue, symptoms_datapoint.headache, symptoms_datapoint.sore_throat, symptoms_datapoint.nasal_congestion, symptoms_datapoint.nausea, symptoms_datapoint.vomiting, symptoms_datapoint.diarrhea, symptoms_datapoint.dysguesia, symptoms_datapoint.ageusia, symptoms_datapoint.anosmia, symptoms_datapoint.myalgia]
+    
+    for cases_datapoint in cases_datapoints:
+        if cases_datapoint.date == symptoms_datapoint.date and cases_datapoint.county == symptoms_datapoint.county:
+            current_cases = cases_datapoint.cases
 
+    joined_datapoints.append(JoinedData(date = current_date, county = current_county, symptoms = current_symptoms, cases = current_cases))
 
+# setup for ML 
+# code below adapted from p05-join.py
 
-
-
-
-
-"""
-# set up for ML 
-
-examples = []
 ys = []
+examples = []
+for datapoint in joined_datapoints:
+    ys.append(datapoint.cases)
+    examples.append(datapoint.symptoms)
 
-with open(dataset_local_path("poetry_id.jsonl")) as fp:
-    for line in fp:
-        info = json.loads(line)
-        # Note: the data contains a whole bunch of extra stuff; we just want numeric features for now.
-        keep = info["features"]
-        # whether or not it's poetry is our label.
-        ys.append(info["poetry"])
-        # hold onto this single dictionary.
-        examples.append(keep)
+RANDOM_SEED = 1234
 
-## CONVERT TO MATRIX:
-
-feature_numbering = DictVectorizer(sort=True)
-X = feature_numbering.fit_transform(examples) / 1000
-
-print("Features as {} matrix.".format(X.shape))
-
-
-## SPLIT DATA:
-
-RANDOM_SEED = 12345678
-
-# Numpy-arrays are more useful than python's lists.
-y = np.array(ys)
-# split off train/validate (tv) pieces.
-X_tv, X_test, y_tv, y_test = train_test_split(
-    X, y, train_size=0.75, shuffle=True, random_state=RANDOM_SEED
+## split off train/validate (tv) pieces.
+ex_tv, ex_test, y_tv, y_test = train_test_split(
+    examples,
+    ys,
+    train_size=0.75,
+    shuffle=True,
+    random_state=RANDOM_SEED,
 )
 # split off train, validate from (tv) pieces.
-X_train, X_vali, y_train, y_vali = train_test_split(
-    X_tv, y_tv, train_size=0.66, shuffle=True, random_state=RANDOM_SEED
+ex_train, ex_vali, y_train, y_vali = train_test_split(
+    ex_tv, y_tv, train_size=0.66, shuffle=True, random_state=RANDOM_SEED
 )
 
-print(X_train.shape, X_vali.shape, X_test.shape)
-"""
+print(len(ex_train))
+print(len(ex_vali))
+print(len(ex_test))
+
+print(len(y_train))
+print(len(y_vali))
+print(len(y_test))
+
+
+
+
+
+
