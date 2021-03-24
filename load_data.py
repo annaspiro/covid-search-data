@@ -1,5 +1,15 @@
 # Anna Spiro 
 # ML Course Project: COVID Search Data (NY Counties)
+
+"""
+Current progress: 
+Loaded 1024 datapoints (all NY County data). 
+X matrix is weekly symptoms data (for 16 symptoms) and y is total weekly cases (starting on the given date).
+X and y have been split into train, validate, and test. 
+Data sources to pursue later: can add in other state's county data if I need more datapoints! 
+"""
+
+
 import csv 
 from sklearn.model_selection import train_test_split
 
@@ -31,6 +41,8 @@ class SymptomsData:
     ageusia: float # total loss of taste 
     anosmia: float # loss of smell 
     myalgia: float # muscle pain
+
+# note: symptoms chosen based on this list: https://www.cdc.gov/coronavirus/2019-ncov/symptoms-testing/symptoms.html
 
 # first, get csv data into list of SymptomsData
 
