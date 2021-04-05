@@ -9,13 +9,12 @@ X and y have been split into train, validate, and test.
 Data sources to pursue later: can add in other state's county data if I need more datapoints! 
 """
 
-
 import csv 
 from sklearn.model_selection import train_test_split
 
 # stdlib:
 from dataclasses import dataclass
-from typing import List
+from typing import List, Set, Tuple
 
 # import google symptoms data 
 # data found here: https://pair-code.github.io/covid19_symptom_dataset/?country=US (chose to use NY county data)
@@ -44,89 +43,66 @@ class SymptomsData:
 
 # note: symptoms chosen based on this list: https://www.cdc.gov/coronavirus/2019-ncov/symptoms-testing/symptoms.html
 
-# first, get csv data into list of SymptomsData
+def read_in_csv(filename, start_row, end_row, date_constraint):
+    """
+    Return datapoints as List[SymptomsData] and relevant dates as Set(str)
+    """ 
+    datapoints: List[SymptomsData] = []
 
-# keep relevant dates as a set so that it's faster to find relevant casese datapoints   
-relevant_dates = set() 
+    # keep relevant dates as a set so that it's faster to find relevant casese datapoints   
+    relevant_dates: Set[str] = set()
+    
+    #relevant_dates = set() 
 
-# 2020 data 
-last_year_datapoints: List[SymptomsData] = []
+    with open(filename) as csv_file: 
+        csv_reader = csv.DictReader(csv_file, delimiter=',')
 
-with open("2020_NY_data.csv") as csv_file: 
-    csv_reader = csv.DictReader(csv_file, delimiter=',')
+        # skip rows that are combined NY data)
+        relevant_rows = [row for idx, row in enumerate(csv_reader) if idx in range(start_row, end_row)]
 
-    # want to start on row 53 (before is combined NY data)
-    relevant_rows = [row for idx, row in enumerate(csv_reader) if idx in range(53,3277)]
+        for row in relevant_rows: 
+            # get rid of "" values 
+            if row["symptom:Shallow breathing"] ==  "" or row["symptom:Chills"] == "" or row["symptom:Cough"] == "" or row["symptom:Shortness of breath"] == "" or row["symptom:Shallow breathing"] == "" or row["symptom:Fatigue"] == "" or row["symptom:Headache"] == "" or row["symptom:Sore throat"] == "" or row["symptom:Nasal congestion"] == "" or row["symptom:Nausea"] == "" or row["symptom:Vomiting"] == "" or row["symptom:Diarrhea"] == "" or row["symptom:Dysgeusia"] == "" or row["symptom:Ageusia"] == "" or row["symptom:Anosmia"] == "" or row["symptom:Myalgia"] == "":
+                continue
 
-    for row in relevant_rows: 
-        # get rid of "" values 
-        if row["symptom:Shallow breathing"] ==  "" or row["symptom:Chills"] == "" or row["symptom:Cough"] == "" or row["symptom:Shortness of breath"] == "" or row["symptom:Shallow breathing"] == "" or row["symptom:Fatigue"] == "" or row["symptom:Headache"] == "" or row["symptom:Sore throat"] == "" or row["symptom:Nasal congestion"] == "" or row["symptom:Nausea"] == "" or row["symptom:Vomiting"] == "" or row["symptom:Diarrhea"] == "" or row["symptom:Dysgeusia"] == "" or row["symptom:Ageusia"] == "" or row["symptom:Anosmia"] == "" or row["symptom:Myalgia"] == "":
-             continue
+            if date_constraint: # only necessary for 2020 data (first COVID case confirmed on 2020-03-01)
+                if int(row["date"][5:7]) < 3: 
+                    continue 
 
-        # first COVID case confirmed on 2020-03-01
-        if int(row["date"][5:7]) < 3: 
-            continue 
+            relevant_dates.add(row["date"])
 
-        relevant_dates.add(row["date"])
+            datapoints.append(SymptomsData(
+            date = row["date"],
+            county = row["sub_region_2"].rsplit(' ',1)[0], # don't want "County"
+            fever = float(row["symptom:Fever"]) ,
+            chills = float(row["symptom:Chills"]),
+            cough = float(row["symptom:Cough"]) ,
+            shortness_of_breath = float(row["symptom:Shortness of breath"]),
+            shallow_breathing = float(row["symptom:Shallow breathing"]),
+            fatigue = float(row["symptom:Fatigue"]),
+            headache = float(row["symptom:Headache"]),
+            sore_throat = float(row["symptom:Sore throat"]),
+            nasal_congestion = float(row["symptom:Nasal congestion"]),
+            nausea = float(row["symptom:Nausea"]),
+            vomiting = float(row["symptom:Vomiting"]),
+            diarrhea = float(row["symptom:Diarrhea"]),
+            dysguesia = float(row["symptom:Dysgeusia"]), 
+            ageusia = float(row["symptom:Ageusia"]), 
+            anosmia = float(row["symptom:Anosmia"]), 
+            myalgia = float(row["symptom:Myalgia"])))
 
-        last_year_datapoints.append(SymptomsData(
-        date = row["date"],
-        county = row["sub_region_2"].rsplit(' ',1)[0], # don't want "County"
-        fever = float(row["symptom:Fever"]) ,
-        chills = float(row["symptom:Chills"]),
-        cough = float(row["symptom:Cough"]) ,
-        shortness_of_breath = float(row["symptom:Shortness of breath"]),
-        shallow_breathing = float(row["symptom:Shallow breathing"]),
-        fatigue = float(row["symptom:Fatigue"]),
-        headache = float(row["symptom:Headache"]),
-        sore_throat = float(row["symptom:Sore throat"]),
-        nasal_congestion = float(row["symptom:Nasal congestion"]),
-        nausea = float(row["symptom:Nausea"]),
-        vomiting = float(row["symptom:Vomiting"]),
-        diarrhea = float(row["symptom:Diarrhea"]),
-        dysguesia = float(row["symptom:Dysgeusia"]), 
-        ageusia = float(row["symptom:Ageusia"]), 
-        anosmia = float(row["symptom:Anosmia"]), 
-        myalgia = float(row["symptom:Myalgia"])))
+    return datapoints, relevant_dates
 
-# 2021 data 
-this_year_datapoints: List[SymptomsData] = []
 
-with open("2021_NY_data.csv") as csv_file: 
-    csv_reader = csv.DictReader(csv_file, delimiter=',')
+# combine csv data from 2020 and 2021
 
-    # want to start on row 11 (before is combined NY data)
-    relevant_rows = [row for idx, row in enumerate(csv_reader) if idx in range(11,631)]
+last_year_info = read_in_csv("2020_NY_data.csv", 53, 3277, True)
+this_year_info = read_in_csv("2021_NY_data.csv", 11, 631, False)
 
-    for row in relevant_rows: 
-        # get rid of "" values 
-        if row["symptom:Shallow breathing"] ==  "" or row["symptom:Chills"] == "" or row["symptom:Cough"] == "" or row["symptom:Shortness of breath"] == "" or row["symptom:Shallow breathing"] == "" or row["symptom:Fatigue"] == "" or row["symptom:Headache"] == "" or row["symptom:Sore throat"] == "" or row["symptom:Nasal congestion"] == "" or row["symptom:Nausea"] == "" or row["symptom:Vomiting"] == "" or row["symptom:Diarrhea"] == "" or row["symptom:Dysgeusia"] == "" or row["symptom:Ageusia"] == "" or row["symptom:Anosmia"] == "" or row["symptom:Myalgia"] == "":
-             continue
-        
-        relevant_dates.add(row["date"])
-
-        this_year_datapoints.append(SymptomsData(
-        date = row["date"],
-        county = row["sub_region_2"].rsplit(' ',1)[0], # don't want "County"
-        fever = float(row["symptom:Fever"]) ,
-        chills = float(row["symptom:Chills"]),
-        cough = float(row["symptom:Cough"]) ,
-        shortness_of_breath = float(row["symptom:Shortness of breath"]),
-        shallow_breathing = float(row["symptom:Shallow breathing"]),
-        fatigue = float(row["symptom:Fatigue"]),
-        headache = float(row["symptom:Headache"]),
-        sore_throat = float(row["symptom:Sore throat"]),
-        nasal_congestion = float(row["symptom:Nasal congestion"]),
-        nausea = float(row["symptom:Nausea"]),
-        vomiting = float(row["symptom:Vomiting"]),
-        diarrhea = float(row["symptom:Diarrhea"]),
-        dysguesia = float(row["symptom:Dysgeusia"]), 
-        ageusia = float(row["symptom:Ageusia"]), 
-        anosmia = float(row["symptom:Anosmia"]), 
-        myalgia = float(row["symptom:Myalgia"])))
-
-total_sypmtoms_datapoints = last_year_datapoints + this_year_datapoints
 # note: len of this = 1024
+total_sypmtoms_datapoints = last_year_info[0] + this_year_info[0]
+
+relevant_dates = last_year_info[1].union(this_year_info[1])
 
 # add in new weekly COVID cases to datapoints 
 
