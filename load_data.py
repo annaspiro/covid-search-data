@@ -8,6 +8,15 @@ import pickle
 from dataclasses import dataclass
 from typing import List, Set
 
+# get population data 
+population_info = {} # dictionary with counties as keys, populations as values (int)
+with open("population_data.csv") as csv_file:
+    csv_reader = csv.reader(csv_file, delimiter=",")
+    next(csv_reader) # skip header
+    for row in csv_reader: 
+        current_county = row[0].rsplit(" ", 1)[0] # don't want "County"
+        population_info[current_county] = float(row[1])
+
 # import google symptoms data
 # data found here: https://pair-code.github.io/covid19_symptom_dataset/?country=US (chose to use NY county data)
 # code to read csv adapted from https://realpython.com/python-csv/
@@ -111,6 +120,7 @@ def read_in_csv(filename, start_row, end_row, date_constraint):
 
     return datapoints, relevant_dates
 
+
 # combine csv data from 2020 and 2021
 
 last_year_info = read_in_csv("2020_NY_data.csv", 53, 3277, True)
@@ -165,7 +175,7 @@ class JoinedData:
     date: str
     county: str
     symptoms: List[float]
-    cases: int
+    cases: float
 
 joined_datapoints: List[JoinedData] = []
 
@@ -202,12 +212,14 @@ for symptoms_datapoint in total_sypmtoms_datapoints:
         ):
             current_cases = cases_datapoint.cases
 
+    current_pop = population_info[current_county]
+
     joined_datapoints.append(
         JoinedData(
             date=current_date,
             county=current_county,
             symptoms=current_symptoms,
-            cases=current_cases,
+            cases=current_cases/current_pop,
         )
     )
 
