@@ -7,7 +7,7 @@ import pickle
 from load_data import JoinedData
 import numpy as np
 from sklearn.utils import resample
-from shared import simple_boxplot, bootstrap_accuracy
+from shared import simple_boxplot, bootstrap_accuracy, bootstrap_r2
 
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.tree import DecisionTreeRegressor
@@ -123,11 +123,10 @@ simple_boxplot(
 )
 """
 
-
 # try removing features (code adapted from p10)
 
 from dataclasses import dataclass
-import matplotlib as plt
+import matplotlib.pyplot as plt
 import typing as T
 
 @dataclass
@@ -142,6 +141,7 @@ def train_and_eval(name, x, y, vx, vy):
     options: T.List[Model] = []
 
     # start with only one option 
+    """
     m = KNeighborsRegressor(n_neighbors=5, weights="distance")
     m.fit(x, y)
     options.append(Model(m.score(vx, vy), m))
@@ -149,11 +149,15 @@ def train_and_eval(name, x, y, vx, vy):
     m = RandomForestRegressor(max_depth=4, random_state=RANDOM_SEED)
     m.fit(x, y)
     options.append(Model(m.score(vx, vy), m))
+    """
+    m = MLPRegressor(max_iter=10000)
+    m.fit(x, y)
+    options.append(Model(m.score(vx, vy), m))
 
     # pick the best model:
     best = max(options, key=lambda m: m.vali_score)
     # bootstrap its output:
-    graphs[name] = bootstrap_accuracy(best.m, vx, vy)
+    graphs[name] = bootstrap_r2(best.m, vx, vy)
     # record our progress:
     print("{:20}\t{:.3}\t{}".format(name, np.mean(graphs[name]), best.m))
 
