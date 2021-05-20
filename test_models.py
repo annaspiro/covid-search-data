@@ -34,7 +34,7 @@ feature_names = ['fever',
 
 #reload joined_datapoints from saved_data file 
 
-data_file = open("saved_data", "rb")
+data_file = open("saved_data_2", "rb")
 joined_datapoints = pickle.load(data_file)
 
 # setup for ML

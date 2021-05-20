@@ -1,5 +1,4 @@
-# second attempt: include previous week data 
-
+# third attempt: include extra features (besdies symptoms data)
 # Anna Spiro
 # ML Course Project: COVID Search Data (NY Counties)
 
@@ -243,17 +242,11 @@ for symptoms_datapoint in total_sypmtoms_datapoints:
         # if we want prev week averaged in 
         total_symptoms = [statistics.mean(k) for k in zip(previous_symptoms, current_symptoms)]
         
-        # get number of days since March 1 (first COVID case in NY state) as extra feature 
-        start = datetime.strptime("2020-03-01","%Y-%m-%d")
-        pandemic_days = (d1 - start).days
-
-        total_symptoms.append(pandemic_days)
-
         for cases_datapoint in cases_datapoints:
-            
+
             if (
-                cases_datapoint.date == current_date
-                and cases_datapoint.county == current_county
+                cases_datapoint.date == symptoms_datapoint.date
+                and cases_datapoint.county == symptoms_datapoint.county
             ):
                 current_cases = cases_datapoint.cases
 
@@ -268,7 +261,6 @@ for symptoms_datapoint in total_sypmtoms_datapoints:
             )
         )
 
-data_file = open("saved_data_2", "wb")
+data_file = open("saved_data_3", "wb")
 pickle.dump(joined_datapoints, data_file)
 
-print(joined_datapoints[0])
