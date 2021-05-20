@@ -1,8 +1,11 @@
+# second attempt: include previous week data 
+
 # Anna Spiro
 # ML Course Project: COVID Search Data (NY Counties)
 
 import csv
 import pickle
+from datetime import datetime 
 
 # stdlib:
 from dataclasses import dataclass
@@ -176,51 +179,87 @@ class JoinedData:
 
 joined_datapoints: List[JoinedData] = []
 
+two_weeks_data = 0 # checking how many datapoints we have (if we also need week before data)
+
 for symptoms_datapoint in total_sypmtoms_datapoints:
+    prev_week_found = False 
+
     current_date = symptoms_datapoint.date
     current_county = symptoms_datapoint.county
     current_cases = 0
 
-    # list of symptoms data
-    current_symptoms = [
-        symptoms_datapoint.fever,
-        symptoms_datapoint.chills,
-        symptoms_datapoint.cough,
-        symptoms_datapoint.shortness_of_breath,
-        symptoms_datapoint.shallow_breathing,
-        symptoms_datapoint.fatigue,
-        symptoms_datapoint.headache,
-        symptoms_datapoint.sore_throat,
-        symptoms_datapoint.nasal_congestion,
-        symptoms_datapoint.nausea,
-        symptoms_datapoint.vomiting,
-        symptoms_datapoint.diarrhea,
-        symptoms_datapoint.dysguesia,
-        symptoms_datapoint.ageusia,
-        symptoms_datapoint.anosmia,
-        symptoms_datapoint.myalgia,
-    ]
+    d1 = datetime.strptime(current_date,"%Y-%m-%d")
+    
+    for previous_symptoms_datapoint in total_sypmtoms_datapoints:
+        date_to_check = previous_symptoms_datapoint.date
+        d0 = datetime.strptime(date_to_check,"%Y-%m-%d")
 
-    for cases_datapoint in cases_datapoints:
+        delta = d1 - d0 
+        if delta.days == 7 and current_county == previous_symptoms_datapoint.county:
+            prev_week_found = True
+            previous_symptoms = [
+                previous_symptoms_datapoint.fever,
+                previous_symptoms_datapoint.chills,
+                previous_symptoms_datapoint.cough,
+                previous_symptoms_datapoint.shortness_of_breath,
+                previous_symptoms_datapoint.shallow_breathing,
+                previous_symptoms_datapoint.fatigue,
+                previous_symptoms_datapoint.headache,
+                previous_symptoms_datapoint.sore_throat,
+                previous_symptoms_datapoint.nasal_congestion,
+                previous_symptoms_datapoint.nausea,
+                previous_symptoms_datapoint.vomiting,
+                previous_symptoms_datapoint.diarrhea,
+                previous_symptoms_datapoint.dysguesia,
+                previous_symptoms_datapoint.ageusia,
+                previous_symptoms_datapoint.anosmia,
+                previous_symptoms_datapoint.myalgia,
+            ]
+            
+            two_weeks_data+=1 
 
-        if (
-            cases_datapoint.date == symptoms_datapoint.date
-            and cases_datapoint.county == symptoms_datapoint.county
-        ):
-            current_cases = cases_datapoint.cases
+    if prev_week_found: # if no data for current week, skip to next symptoms_datapoint
 
-    current_pop = population_info[current_county]
+        # list of symptoms data
+        current_symptoms = [
+            symptoms_datapoint.fever,
+            symptoms_datapoint.chills,
+            symptoms_datapoint.cough,
+            symptoms_datapoint.shortness_of_breath,
+            symptoms_datapoint.shallow_breathing,
+            symptoms_datapoint.fatigue,
+            symptoms_datapoint.headache,
+            symptoms_datapoint.sore_throat,
+            symptoms_datapoint.nasal_congestion,
+            symptoms_datapoint.nausea,
+            symptoms_datapoint.vomiting,
+            symptoms_datapoint.diarrhea,
+            symptoms_datapoint.dysguesia,
+            symptoms_datapoint.ageusia,
+            symptoms_datapoint.anosmia,
+            symptoms_datapoint.myalgia,
+        ]
 
-    joined_datapoints.append(
-        JoinedData(
-            date=current_date,
-            county=current_county,
-            symptoms=current_symptoms,
-            cases=current_cases/current_pop,
+        total_symptoms = previous_symptoms + current_symptoms
+
+        for cases_datapoint in cases_datapoints:
+
+            if (
+                cases_datapoint.date == symptoms_datapoint.date
+                and cases_datapoint.county == symptoms_datapoint.county
+            ):
+                current_cases = cases_datapoint.cases
+
+        current_pop = population_info[current_county]
+
+        joined_datapoints.append(
+            JoinedData(
+                date=current_date,
+                county=current_county,
+                symptoms=total_symptoms,
+                cases=current_cases/current_pop,
+            )
         )
-    )
 
-data_file = open("saved_data", "wb")
+data_file = open("saved_data_2", "wb")
 pickle.dump(joined_datapoints, data_file)
-
-

@@ -33,12 +33,14 @@ feature_names = ['fever',
     'myalgia'] 
 
 #reload joined_datapoints from saved_data file 
-saved_data = open(r'C:\d.pkl', 'rb')
-joined_datapoints = pickle.load(saved_data)
-saved_data.close()
+
+data_file = open("saved_data", "rb")
+joined_datapoints = pickle.load(data_file)
 
 # setup for ML
 # code below adapted from p08
+
+print(len(joined_datapoints))
 
 ys = []
 examples = []
@@ -86,20 +88,10 @@ knr = KNeighborsRegressor(n_neighbors=5, weights="distance")
 knr.fit(X_train, y_train)
 print(knr.score(X_vali, y_vali))
 
-print("DecisionTreeRegressor")
-dtr = DecisionTreeRegressor(max_depth=4)
-dtr.fit(X_train, y_train)
-print(dtr.score(X_vali, y_vali))
-
 print("RandomForestRegressor")
 rfr = RandomForestRegressor(max_depth=4, random_state=RANDOM_SEED)
 rfr.fit(X_train, y_train)
 print(rfr.score(X_vali, y_vali))
-
-print("SGDRegressor")
-sgdr = SGDRegressor()
-sgdr.fit(X_train, y_train)
-print(sgdr.score(X_vali, y_vali))
 
 print("MLPRegressor")
 mlpr = MLPRegressor(max_iter=10000)
@@ -107,6 +99,16 @@ mlpr.fit(X_train, y_train)
 print(mlpr.score(X_vali, y_vali))
 
 """
+print("DecisionTreeRegressor")
+dtr = DecisionTreeRegressor(max_depth=4)
+dtr.fit(X_train, y_train)
+print(dtr.score(X_vali, y_vali))
+
+print("SGDRegressor")
+sgdr = SGDRegressor()
+sgdr.fit(X_train, y_train)
+print(sgdr.score(X_vali, y_vali))
+
 # look at feature importance (code adapted from p10)
 
 # loop over each tree and ask them how important each feature was!
@@ -121,7 +123,6 @@ simple_boxplot(
     title="Tree Importances",
     ylabel="Decision Tree Criterion Importances",
 )
-"""
 
 # try removing features (code adapted from p10)
 
@@ -137,19 +138,18 @@ class Model:
 graphs: T.Dict[str, T.List[float]] = {}
 
 def train_and_eval(name, x, y, vx, vy):
-    """ Train and Eval a single model. """
+    # Train and Eval a single model
     options: T.List[Model] = []
 
     # start with only one option 
-    """
-    m = KNeighborsRegressor(n_neighbors=5, weights="distance")
-    m.fit(x, y)
-    options.append(Model(m.score(vx, vy), m))
+    #m = KNeighborsRegressor(n_neighbors=5, weights="distance")
+    #m.fit(x, y)
+    #options.append(Model(m.score(vx, vy), m))
 
-    m = RandomForestRegressor(max_depth=4, random_state=RANDOM_SEED)
-    m.fit(x, y)
-    options.append(Model(m.score(vx, vy), m))
-    """
+    #m = RandomForestRegressor(max_depth=4, random_state=RANDOM_SEED)
+    #m.fit(x, y)
+    #options.append(Model(m.score(vx, vy), m))
+
     m = MLPRegressor(max_iter=10000)
     m.fit(x, y)
     options.append(Model(m.score(vx, vy), m))
@@ -194,7 +194,6 @@ plt.tight_layout()
 plt.show()
 
 
-"""
 # visualize training (code adapted from p09)
 
 #%% Actually compute performance for each % of training data
